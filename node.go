@@ -32,9 +32,79 @@ func NewNode(id, text string, x, y float64) *Node {
 	}
 }
 
+// wrapText wraps text to fit within maxWidth, breaking on word boundaries
+func wrapText(text string, maxWidth int) []string {
+	if maxWidth < 5 {
+		maxWidth = 5 // Minimum sensible width
+	}
+
+	// First split by explicit newlines
+	paragraphs := strings.Split(text, "\n")
+	var wrappedLines []string
+
+	for _, paragraph := range paragraphs {
+		if len(paragraph) == 0 {
+			wrappedLines = append(wrappedLines, "")
+			continue
+		}
+
+		// Split paragraph into words
+		words := strings.Fields(paragraph)
+		if len(words) == 0 {
+			wrappedLines = append(wrappedLines, "")
+			continue
+		}
+
+		var currentLine string
+		for _, word := range words {
+			// If adding this word would exceed maxWidth
+			if len(currentLine) > 0 && len(currentLine)+1+len(word) > maxWidth {
+				// If the word itself is longer than maxWidth, we need to break it
+				if len(word) > maxWidth {
+					// Add current line if not empty
+					if len(currentLine) > 0 {
+						wrappedLines = append(wrappedLines, currentLine)
+						currentLine = ""
+					}
+					// Break the long word into chunks
+					for len(word) > maxWidth {
+						wrappedLines = append(wrappedLines, word[:maxWidth])
+						word = word[maxWidth:]
+					}
+					currentLine = word
+				} else {
+					// Save current line and start new one
+					wrappedLines = append(wrappedLines, currentLine)
+					currentLine = word
+				}
+			} else {
+				// Add word to current line
+				if len(currentLine) > 0 {
+					currentLine += " " + word
+				} else {
+					currentLine = word
+				}
+			}
+		}
+
+		// Add the last line if not empty
+		if len(currentLine) > 0 {
+			wrappedLines = append(wrappedLines, currentLine)
+		}
+	}
+
+	if len(wrappedLines) == 0 {
+		wrappedLines = append(wrappedLines, "")
+	}
+
+	return wrappedLines
+}
+
 // calculateNodeSize returns the width and height needed for a node's text
 func calculateNodeSize(text string) (int, int) {
-	lines := strings.Split(text, "\n")
+	const maxTextWidth = 22 // Roughly 4-5 words, similar to MindNode
+
+	lines := wrapText(text, maxTextWidth)
 	height := len(lines) + 2 // +2 for borders
 	width := 0
 	for _, line := range lines {

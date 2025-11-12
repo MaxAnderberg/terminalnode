@@ -17,6 +17,11 @@
 - [x] Added debug color display in status bar
 - [x] Verified 'c' key centers camera on selected node
 
+### v0.1.2 - Text Wrapping & UX Polish
+- [x] Multi-line text support with automatic word wrapping
+- [x] Smart word-boundary wrapping (22 chars ~4-5 words per line)
+- [x] Dynamic node height adjustment based on wrapped content
+
 ---
 
 ## 🚧 In Progress
@@ -37,11 +42,6 @@ Nothing currently in progress.
   - Track state history
   - Ctrl+Z / Ctrl+Y keybinds
   - Limited history (last 50 actions)
-
-- [ ] **Multi-line Text Support** - Core feature
-  - Better text input handling
-  - Word wrap in nodes
-  - Expand node height automatically
 
 ### Visual Polish
 - [ ] **Smooth Bezier Curves** - Better looking connections
@@ -196,4 +196,4 @@ Nothing currently in progress.
 
 ---
 
-**Last Updated**: 2025-11-12
+**Last Updated**: 2025-11-12 (v0.1.2 - Text wrapping implemented)

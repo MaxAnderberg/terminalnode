@@ -118,7 +118,9 @@ func (m Model) drawNode(grid [][]ColoredCell, node *Node, isSelected bool) {
 	}
 
 	// Draw middle (text)
-	lines := strings.Split(node.Text, "\n")
+	// Use the same wrapping logic as calculateNodeSize
+	const maxTextWidth = 22
+	lines := wrapText(node.Text, maxTextWidth)
 	for i := 1; i < height-1; i++ {
 		y := sy + i
 		if y < 0 || y >= len(grid) {
@@ -134,9 +136,9 @@ func (m Model) drawNode(grid [][]ColoredCell, node *Node, isSelected bool) {
 		lineIdx := i - 1
 		if lineIdx < len(lines) {
 			text := lines[lineIdx]
-			maxTextWidth := width - 3 // Account for borders and padding
-			if len(text) > maxTextWidth {
-				text = text[:maxTextWidth]
+			maxRenderWidth := width - 3 // Account for borders and padding
+			if len(text) > maxRenderWidth {
+				text = text[:maxRenderWidth]
 			}
 
 			for j, ch := range text {
