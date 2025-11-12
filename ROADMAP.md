@@ -22,6 +22,20 @@
 - [x] Smart word-boundary wrapping (22 chars ~4-5 words per line)
 - [x] Dynamic node height adjustment based on wrapped content
 
+### v0.1.3 - Visual Polish
+- [x] Smooth Bezier curve connections between nodes
+  - Cubic Bezier interpolation with intelligent control points
+  - Diagonal line characters (╱╲) for smooth curve rendering
+  - Maintains border-to-border connection points
+- [x] Enhanced node box design
+  - Selected nodes: bold double-line borders (━┃┏┓┗┛)
+  - Unselected nodes: rounded corners (╭╮╰╯) for clean look
+  - Improved internal padding (1 space on each side)
+- [x] Polished status bar styling
+  - Modern hex color scheme
+  - Better visual hierarchy and contrast
+  - Color-coded mode indicators (green/orange/pink)
+
 ---
 
 ## 🚧 In Progress
@@ -42,18 +56,6 @@ Nothing currently in progress.
   - Track state history
   - Ctrl+Z / Ctrl+Y keybinds
   - Limited history (last 50 actions)
-
-### Visual Polish
-- [ ] **Smooth Bezier Curves** - Better looking connections
-  - Replace straight lines with curves
-  - Smoother visual flow
-  - Maintain border-to-border connection points
-
-- [ ] **Node Box Design** - Minimal/clean improvements
-  - Better spacing/padding
-  - Subtle shadows or depth indicators
-  - Improved typography
-  - Consider rounded corners on text area
 
 ---
 
@@ -82,9 +84,8 @@ Nothing currently in progress.
   - Color picker for branches
   - Option to disable colors
 
-- [ ] **Improved Status Bar**
+- [ ] **Enhanced Status Bar Features**
   - Show more context (current path/breadcrumbs)
-  - Better visual design
   - Shortcuts reminder
 
 - [ ] **Visual Feedback**
@@ -173,16 +174,16 @@ Nothing currently in progress.
 
 ## 🎯 Next Milestone: v0.2.0
 
-**Focus**: Core UX improvements and visual polish
+**Focus**: Core UX improvements for production use
 
 **Target Features**:
 1. Search/Filter functionality
 2. Undo/Redo system
-3. Multi-line text support
-4. Bezier curve connections
-5. Node box visual improvements
+3. Node collapsing/expanding
+4. Export functionality (Markdown)
+5. Auto-save
 
-**Goal**: Make the tool feel polished and production-ready for daily use.
+**Goal**: Make the tool production-ready for daily use with essential workflow features.
 
 ---
 
@@ -196,4 +197,4 @@ Nothing currently in progress.
 
 ---
 
-**Last Updated**: 2025-11-12 (v0.1.2 - Text wrapping implemented)
+**Last Updated**: 2025-11-12 (v0.1.3 - Visual polish implemented)
