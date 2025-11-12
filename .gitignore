@@ -1,0 +1,26 @@
+# Binaries
+mindmap
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Mind map files (optional - uncomment if you don't want to commit them)
+# mindmap.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
