@@ -88,13 +88,15 @@ func (m Model) drawNode(grid [][]ColoredCell, node *Node, isSelected bool) {
 	}
 
 	// Get border runes based on selection
+	// Selected nodes use rounded double-line borders for emphasis
+	// Unselected nodes use single-line rounded corners for clean look
 	var top, bottom, left, right, topLeft, topRight, bottomLeft, bottomRight rune
 	if isSelected {
-		top, bottom, left, right = '─', '─', '│', '│'
-		topLeft, topRight, bottomLeft, bottomRight = '╭', '╮', '╰', '╯'
+		top, bottom, left, right = '━', '━', '┃', '┃'
+		topLeft, topRight, bottomLeft, bottomRight = '┏', '┓', '┗', '┛'
 	} else {
 		top, bottom, left, right = '─', '─', '│', '│'
-		topLeft, topRight, bottomLeft, bottomRight = '┌', '┐', '└', '┘'
+		topLeft, topRight, bottomLeft, bottomRight = '╭', '╮', '╰', '╯'
 	}
 
 	// Add selection indicator
@@ -117,7 +119,7 @@ func (m Model) drawNode(grid [][]ColoredCell, node *Node, isSelected bool) {
 		}
 	}
 
-	// Draw middle (text)
+	// Draw middle (text with improved padding)
 	// Use the same wrapping logic as calculateNodeSize
 	const maxTextWidth = 22
 	lines := wrapText(node.Text, maxTextWidth)
@@ -132,21 +134,31 @@ func (m Model) drawNode(grid [][]ColoredCell, node *Node, isSelected bool) {
 			grid[y][sx] = ColoredCell{Char: left, Color: node.Color}
 		}
 
+		// Add left padding space
+		if sx+1 >= 0 && sx+1 < len(grid[0]) {
+			grid[y][sx+1] = ColoredCell{Char: ' ', Color: ""}
+		}
+
 		// Text content
 		lineIdx := i - 1
 		if lineIdx < len(lines) {
 			text := lines[lineIdx]
-			maxRenderWidth := width - 3 // Account for borders and padding
+			maxRenderWidth := width - 4 // Account for borders and padding (2 spaces)
 			if len(text) > maxRenderWidth {
 				text = text[:maxRenderWidth]
 			}
 
 			for j, ch := range text {
-				x := sx + j + 2 // +2 for border and padding
+				x := sx + j + 2 // +2 for border and left padding
 				if x >= 0 && x < len(grid[0]) {
 					grid[y][x] = ColoredCell{Char: ch, Color: node.Color}
 				}
 			}
+		}
+
+		// Add right padding space
+		if sx+width-2 >= 0 && sx+width-2 < len(grid[0]) {
+			grid[y][sx+width-2] = ColoredCell{Char: ' ', Color: ""}
 		}
 
 		// Right border
@@ -228,10 +240,82 @@ func (m Model) drawEdge(grid [][]ColoredCell, from, to *Node) {
 	m.drawLine(grid, sx1, sy1, sx2, sy2, to.Color)
 }
 
-// drawLine draws a line on the grid using Bresenham's algorithm
+// drawLine draws a smooth Bezier curve between two points
 func (m Model) drawLine(grid [][]ColoredCell, x1, y1, x2, y2 int, color string) {
-	dx := abs(x2 - x1)
-	dy := abs(y2 - y1)
+	// Calculate control points for cubic Bezier curve
+	// Place control points horizontally offset for smooth horizontal connections
+	dx := float64(x2 - x1)
+	dy := float64(y2 - y1)
+
+	// Adjust control point distance based on the distance between nodes
+	dist := math.Sqrt(dx*dx + dy*dy)
+	cpOffset := math.Min(dist*0.4, 30.0) // 40% of distance, max 30 units
+
+	// Control points for horizontal flow
+	cp1x := float64(x1) + cpOffset
+	cp1y := float64(y1)
+	cp2x := float64(x2) - cpOffset
+	cp2y := float64(y2)
+
+	// If connection is more vertical than horizontal, adjust control points vertically
+	if math.Abs(dy) > math.Abs(dx) {
+		cp1x = float64(x1)
+		cp1y = float64(y1) + cpOffset*math.Copysign(1, dy)
+		cp2x = float64(x2)
+		cp2y = float64(y2) - cpOffset*math.Copysign(1, dy)
+	}
+
+	// Draw the Bezier curve using parametric equation
+	// Sample enough points for smooth rendering
+	steps := int(dist * 2) // Ensure we have enough resolution
+	if steps < 10 {
+		steps = 10
+	}
+
+	prevX, prevY := x1, y1
+	for i := 0; i <= steps; i++ {
+		t := float64(i) / float64(steps)
+
+		// Cubic Bezier formula: B(t) = (1-t)³P0 + 3(1-t)²tP1 + 3(1-t)t²P2 + t³P3
+		omt := 1 - t
+		omt2 := omt * omt
+		omt3 := omt2 * omt
+		t2 := t * t
+		t3 := t2 * t
+
+		x := omt3*float64(x1) + 3*omt2*t*cp1x + 3*omt*t2*cp2x + t3*float64(x2)
+		y := omt3*float64(y1) + 3*omt2*t*cp1y + 3*omt*t2*cp2y + t3*float64(y2)
+
+		curX, curY := int(math.Round(x)), int(math.Round(y))
+
+		// Draw line segment from previous point to current point
+		m.drawLineSegment(grid, prevX, prevY, curX, curY, color)
+
+		prevX, prevY = curX, curY
+	}
+}
+
+// drawLineSegment draws a small line segment and picks the best character for direction
+func (m Model) drawLineSegment(grid [][]ColoredCell, x1, y1, x2, y2 int, color string) {
+	dx := x2 - x1
+	dy := y2 - y1
+
+	// Plot start point
+	if y1 >= 0 && y1 < len(grid) && x1 >= 0 && x1 < len(grid[0]) {
+		if grid[y1][x1].Char == ' ' {
+			lineChar := m.getLineChar(dx, dy)
+			grid[y1][x1] = ColoredCell{Char: lineChar, Color: color}
+		}
+	}
+
+	// If points are the same, we're done
+	if x1 == x2 && y1 == y2 {
+		return
+	}
+
+	// Use Bresenham to fill in the segment
+	absDx := abs(dx)
+	absDy := abs(dy)
 
 	sx := -1
 	if x1 < x2 {
@@ -242,37 +326,58 @@ func (m Model) drawLine(grid [][]ColoredCell, x1, y1, x2, y2 int, color string) 
 		sy = 1
 	}
 
-	err := dx - dy
+	err := absDx - absDy
 
 	for {
-		// Plot point if within bounds
-		if y1 >= 0 && y1 < len(grid) && x1 >= 0 && x1 < len(grid[0]) {
-			if grid[y1][x1].Char == ' ' {
-				// Choose line character based on direction
-				var lineChar rune
-				if dx > dy {
-					lineChar = '─'
-				} else {
-					lineChar = '│'
-				}
-				grid[y1][x1] = ColoredCell{Char: lineChar, Color: color}
-			}
-		}
-
 		if x1 == x2 && y1 == y2 {
 			break
 		}
 
 		e2 := 2 * err
-		if e2 > -dy {
-			err -= dy
+		if e2 > -absDy {
+			err -= absDy
 			x1 += sx
 		}
-		if e2 < dx {
-			err += dx
+		if e2 < absDx {
+			err += absDx
 			y1 += sy
 		}
+
+		// Plot point if within bounds
+		if y1 >= 0 && y1 < len(grid) && x1 >= 0 && x1 < len(grid[0]) {
+			if grid[y1][x1].Char == ' ' {
+				lineChar := m.getLineChar(dx, dy)
+				grid[y1][x1] = ColoredCell{Char: lineChar, Color: color}
+			}
+		}
 	}
+}
+
+// getLineChar returns the best Unicode box-drawing character for a given direction
+func (m Model) getLineChar(dx, dy int) rune {
+	// Determine angle and pick appropriate character
+	if dx == 0 && dy == 0 {
+		return '·'
+	}
+
+	// Calculate approximate angle
+	absDx := abs(dx)
+	absDy := abs(dy)
+
+	// Mostly horizontal
+	if absDx > absDy*2 {
+		return '─'
+	}
+	// Mostly vertical
+	if absDy > absDx*2 {
+		return '│'
+	}
+
+	// Diagonal
+	if (dx > 0 && dy < 0) || (dx < 0 && dy > 0) {
+		return '╱'
+	}
+	return '╲'
 }
 
 // renderStatusBar creates the status bar at the bottom
@@ -307,24 +412,30 @@ func (m Model) renderStatusBar() string {
 		spacing = strings.Repeat(" ", totalWidth-usedWidth)
 	}
 
-	// Style the status bar
+	// Style the status bar with improved visual hierarchy
 	statusStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("230")).
-		Background(lipgloss.Color("235"))
+		Foreground(lipgloss.Color("#E0E0E0")).
+		Background(lipgloss.Color("#2A2A2A"))
 
 	modeStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("0")).
-		Background(lipgloss.Color("86")).
-		Bold(true)
+		Foreground(lipgloss.Color("#000000")).
+		Background(lipgloss.Color("#00D787")).
+		Bold(true).
+		Padding(0, 1)
 
 	if m.Mode == ModeEdit {
-		modeStyle = modeStyle.Background(lipgloss.Color("214"))
+		modeStyle = modeStyle.
+			Background(lipgloss.Color("#FFB86C")).
+			Foreground(lipgloss.Color("#000000"))
 	} else if m.Mode == ModeLink {
-		modeStyle = modeStyle.Background(lipgloss.Color("205"))
+		modeStyle = modeStyle.
+			Background(lipgloss.Color("#FF79C6")).
+			Foreground(lipgloss.Color("#000000"))
 	}
 
+	// Enhanced visual separation
 	leftPart := modeStyle.Render(modeStr)
-	middlePart := statusStyle.Render(middle)
+	middlePart := statusStyle.Render(" " + middle)
 	rightPart := statusStyle.Render(right)
 
 	return leftPart + statusStyle.Render(spacing) + middlePart + rightPart
