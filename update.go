@@ -37,7 +37,7 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // handleNormalMode handles input in normal navigation mode
 func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	panSpeed := 2.0 / m.Camera.Zoom // Pan faster when zoomed out
+	panSpeed := 5.0 / m.Camera.Zoom // Pan faster when zoomed out (increased from 2.0)
 
 	switch msg.String() {
 	// Quit

@@ -218,7 +218,17 @@ func (m *Model) AddSiblingNode(text string) {
 
 	node := NewNode(id, text, x, y)
 	node.ParentID = selectedNode.ParentID // Same parent as sibling
-	node.Color = selectedNode.Color        // Same color as sibling
+
+	// Assign color based on parent
+	if selectedNode.ParentID == "0" {
+		// Sibling of root's child: assign NEW color from palette
+		node.Color = m.ColorPalette[m.NextColorIndex%len(m.ColorPalette)]
+		m.NextColorIndex++
+	} else {
+		// Regular sibling: inherit color
+		node.Color = selectedNode.Color
+	}
+
 	m.Nodes[id] = node
 
 	// Connect to same parent as the selected node

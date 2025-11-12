@@ -287,8 +287,15 @@ func (m Model) renderStatusBar() string {
 
 	left := fmt.Sprintf(" %s ", modeStr)
 	middle := m.StatusMsg
-	right := fmt.Sprintf(" Nodes: %d | Zoom: %.1fx | Pos: (%.0f, %.0f) | ?: help ",
-		len(m.Nodes), m.Camera.Zoom, m.Camera.X, m.Camera.Y)
+
+	// Debug: show selected node color
+	debugColor := ""
+	if selectedNode := m.GetSelectedNode(); selectedNode != nil {
+		debugColor = fmt.Sprintf(" | Color: %s", selectedNode.Color)
+	}
+
+	right := fmt.Sprintf(" Nodes: %d | Zoom: %.1fx | Pos: (%.0f, %.0f)%s | ?: help ",
+		len(m.Nodes), m.Camera.Zoom, m.Camera.X, m.Camera.Y, debugColor)
 
 	// Calculate spacing
 	totalWidth := m.Width
