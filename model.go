@@ -34,6 +34,7 @@ type Model struct {
 	NextID          int
 	StatusMsg       string
 	LinkSourceID    string // When in link mode, the source node
+	ShowHelp        bool   // True when help overlay is visible
 
 	// Colors
 	ColorPalette   []string

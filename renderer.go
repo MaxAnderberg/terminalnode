@@ -20,6 +20,11 @@ func (m Model) View() string {
 		return ""
 	}
 
+	// If help overlay is shown, render it over everything
+	if m.ShowHelp {
+		return m.renderHelpOverlay()
+	}
+
 	// Create a 2D grid for rendering with color information
 	grid := make([][]ColoredCell, m.Height-1) // -1 for status bar
 	for i := range grid {
@@ -393,20 +398,33 @@ func (m Model) renderStatusBar() string {
 	}
 
 	left := fmt.Sprintf(" %s ", modeStr)
-	middle := m.StatusMsg
 
-	// Debug: show selected node color
-	debugColor := ""
-	if selectedNode := m.GetSelectedNode(); selectedNode != nil {
-		debugColor = fmt.Sprintf(" | Color: %s", selectedNode.Color)
+	// Context-sensitive key hints based on mode
+	var keyHints string
+	switch m.Mode {
+	case ModeNormal:
+		keyHints = " [i]child [Enter]sibling [e]dit [d]elete | hjkl:move +/-:zoom | [?]help "
+	case ModeEdit:
+		keyHints = " [Enter]save [Esc]cancel "
+	case ModeLink:
+		keyHints = " Select target → [Enter]confirm [Esc]cancel "
 	}
 
-	right := fmt.Sprintf(" Nodes: %d | Zoom: %.1fx | Pos: (%.0f, %.0f)%s | ?: help ",
-		len(m.Nodes), m.Camera.Zoom, m.Camera.X, m.Camera.Y, debugColor)
+	middle := m.StatusMsg
+
+	// Compact info on the right
+	right := fmt.Sprintf(" %d nodes | %.1fx ",
+		len(m.Nodes), m.Camera.Zoom)
 
 	// Calculate spacing
 	totalWidth := m.Width
-	usedWidth := lipgloss.Width(left) + lipgloss.Width(middle) + lipgloss.Width(right)
+	leftWidth := lipgloss.Width(left)
+	keyHintsWidth := lipgloss.Width(keyHints)
+	middleWidth := lipgloss.Width(middle)
+	rightWidth := lipgloss.Width(right)
+
+	// Adjust to fit
+	usedWidth := leftWidth + keyHintsWidth + middleWidth + rightWidth
 	spacing := ""
 	if usedWidth < totalWidth {
 		spacing = strings.Repeat(" ", totalWidth-usedWidth)
@@ -433,12 +451,31 @@ func (m Model) renderStatusBar() string {
 			Foreground(lipgloss.Color("#000000"))
 	}
 
+	// Key hints style - subtle but visible
+	keyHintsStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#888888")).
+		Background(lipgloss.Color("#2A2A2A"))
+
+	// Status message style - highlighted when present
+	middleStyle := statusStyle
+	if m.StatusMsg != "" {
+		middleStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFB86C")).
+			Background(lipgloss.Color("#2A2A2A"))
+	}
+
+	// Info style
+	infoStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#666666")).
+		Background(lipgloss.Color("#2A2A2A"))
+
 	// Enhanced visual separation
 	leftPart := modeStyle.Render(modeStr)
-	middlePart := statusStyle.Render(" " + middle)
-	rightPart := statusStyle.Render(right)
+	keyHintsPart := keyHintsStyle.Render(keyHints)
+	middlePart := middleStyle.Render(" " + middle)
+	rightPart := infoStyle.Render(right)
 
-	return leftPart + statusStyle.Render(spacing) + middlePart + rightPart
+	return leftPart + keyHintsPart + statusStyle.Render(spacing) + middlePart + rightPart
 }
 
 // abs returns the absolute value of an integer
@@ -454,4 +491,146 @@ func distance(x1, y1, x2, y2 float64) float64 {
 	dx := x2 - x1
 	dy := y2 - y1
 	return math.Sqrt(dx*dx + dy*dy)
+}
+
+// renderHelpOverlay creates a centered help panel with keybindings
+func (m Model) renderHelpOverlay() string {
+	// Define keybinding categories
+	type KeyBinding struct {
+		Key  string
+		Desc string
+	}
+
+	categories := []struct {
+		Title string
+		Keys  []KeyBinding
+	}{
+		{
+			Title: "Navigation",
+			Keys: []KeyBinding{
+				{"h/j/k/l", "Move camera left/down/up/right"},
+				{"H/J/K/L", "Move camera faster"},
+				{"+/-", "Zoom in/out"},
+				{"0", "Reset view to root node"},
+			},
+		},
+		{
+			Title: "Editing",
+			Keys: []KeyBinding{
+				{"i", "Create child node (to the right)"},
+				{"Enter", "Create sibling node (below)"},
+				{"e", "Edit selected node text"},
+				{"d", "Delete selected node"},
+				{"Esc", "Cancel editing"},
+			},
+		},
+		{
+			Title: "Linking",
+			Keys: []KeyBinding{
+				{"l", "Start linking mode"},
+				{"h/j/k/l", "Navigate to target node"},
+				{"Enter", "Confirm link"},
+				{"Esc", "Cancel linking"},
+			},
+		},
+		{
+			Title: "General",
+			Keys: []KeyBinding{
+				{"?", "Toggle this help"},
+				{"Ctrl+S", "Save mindmap"},
+				{"q", "Quit application"},
+			},
+		},
+	}
+
+	// Calculate dimensions for centered overlay
+	maxWidth := 70
+	if maxWidth > m.Width-4 {
+		maxWidth = m.Width - 4
+	}
+
+	// Build help content
+	var lines []string
+
+	// Title
+	titleStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#00D787")).
+		Align(lipgloss.Center)
+
+	lines = append(lines, titleStyle.Render("⌨  Keybindings"))
+	lines = append(lines, "")
+
+	// Category and key styles
+	categoryStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#FFB86C"))
+
+	keyStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FF79C6")).
+		Bold(true)
+
+	descStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#E0E0E0"))
+
+	// Render each category
+	for i, cat := range categories {
+		if i > 0 {
+			lines = append(lines, "")
+		}
+		lines = append(lines, categoryStyle.Render(cat.Title))
+
+		for _, kb := range cat.Keys {
+			line := fmt.Sprintf("  %-15s %s",
+				keyStyle.Render(kb.Key),
+				descStyle.Render(kb.Desc))
+			lines = append(lines, line)
+		}
+	}
+
+	lines = append(lines, "")
+	footerStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#666666")).
+		Align(lipgloss.Center)
+	lines = append(lines, footerStyle.Render("Press ? or Esc to close"))
+
+	// Join all lines
+	content := strings.Join(lines, "\n")
+
+	// Create bordered box for the help content
+	helpBox := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("#00D787")).
+		Padding(1, 2).
+		Render(content)
+
+	// Center the box on screen
+	height := strings.Count(helpBox, "\n") + 1
+	verticalPadding := (m.Height - height) / 2
+	horizontalPadding := (m.Width - maxWidth - 4) / 2 // -4 for borders
+
+	if verticalPadding < 0 {
+		verticalPadding = 0
+	}
+	if horizontalPadding < 0 {
+		horizontalPadding = 0
+	}
+
+	// Create semi-transparent background
+	bgStyle := lipgloss.NewStyle().
+		Background(lipgloss.Color("#1A1A1A")).
+		Width(m.Width).
+		Height(m.Height)
+
+	// Position help box
+	positioned := lipgloss.Place(
+		m.Width,
+		m.Height,
+		lipgloss.Center,
+		lipgloss.Center,
+		helpBox,
+		lipgloss.WithWhitespaceChars(" "),
+	)
+
+	return bgStyle.Render(positioned)
 }

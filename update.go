@@ -41,6 +41,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleKeyPress processes keyboard input based on current mode
 func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Handle help overlay toggle (works in any mode)
+	if msg.String() == "?" {
+		m.ShowHelp = !m.ShowHelp
+		return m, nil
+	}
+
+	// Close help overlay with ESC if it's open
+	if m.ShowHelp && msg.String() == "esc" {
+		m.ShowHelp = false
+		return m, nil
+	}
+
+	// Don't process other keys if help is shown
+	if m.ShowHelp {
+		return m, nil
+	}
+
 	switch m.Mode {
 	case ModeNormal:
 		return m.handleNormalMode(msg)
@@ -165,9 +182,6 @@ func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.StatusMsg = "Loaded from mindmap.json"
 		}
 
-	// Help
-	case "?":
-		m.StatusMsg = "arrows:select wasd:pan +/-:zoom Enter:sibling Tab:child e:edit x:delete L:link c:center Ctrl+S:save q:quit"
 	}
 
 	return m, nil
