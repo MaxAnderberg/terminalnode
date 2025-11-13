@@ -3,9 +3,20 @@ package main
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
+
+// tickMsg is sent on each animation frame
+type tickMsg time.Time
+
+// doTick returns a command that sends a tick message
+func doTick() tea.Cmd {
+	return tea.Tick(time.Second/60, func(t time.Time) tea.Msg {
+		return tickMsg(t)
+	})
+}
 
 // Update handles messages and updates the model
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -17,6 +28,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		return m.handleKeyPress(msg)
+
+	case tickMsg:
+		// Update camera smoothly towards target
+		// smoothness: 0.2 = smooth, 0.5 = fast, adjust to preference
+		m.Camera.Update(0.25)
+		return m, doTick()
 	}
 
 	return m, nil
@@ -129,8 +146,8 @@ func (m Model) handleNormalMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "c":
 		if node := m.GetSelectedNode(); node != nil {
 			cx, cy := node.GetCenter()
-			m.Camera.X = cx
-			m.Camera.Y = cy
+			m.Camera.TargetX = cx
+			m.Camera.TargetY = cy
 			m.StatusMsg = "Centered on node"
 		}
 

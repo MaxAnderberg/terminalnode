@@ -94,7 +94,7 @@ func NewModel() Model {
 
 // Init initializes the model
 func (m Model) Init() tea.Cmd {
-	return nil
+	return doTick()
 }
 
 // GetSelectedNode returns the currently selected node

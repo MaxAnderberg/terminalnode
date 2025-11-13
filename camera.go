@@ -7,14 +7,22 @@ type Camera struct {
 	X    float64 `json:"x"`    // Camera position in world space
 	Y    float64 `json:"y"`
 	Zoom float64 `json:"zoom"` // 1.0 = normal, 0.5 = zoomed out, 2.0 = zoomed in
+
+	// Target values for smooth interpolation
+	TargetX    float64 `json:"-"` // Target X position (not serialized)
+	TargetY    float64 `json:"-"` // Target Y position (not serialized)
+	TargetZoom float64 `json:"-"` // Target zoom level (not serialized)
 }
 
 // NewCamera creates a new camera at the origin
 func NewCamera() Camera {
 	return Camera{
-		X:    0,
-		Y:    0,
-		Zoom: 1.0,
+		X:          0,
+		Y:          0,
+		Zoom:       1.0,
+		TargetX:    0,
+		TargetY:    0,
+		TargetZoom: 1.0,
 	}
 }
 
@@ -43,25 +51,25 @@ func (c *Camera) ScreenToWorld(sx, sy, screenWidth, screenHeight int) (float64, 
 	return wx, wy
 }
 
-// Pan moves the camera by the given offset
+// Pan moves the camera by the given offset (sets target for smooth movement)
 func (c *Camera) Pan(dx, dy float64) {
-	c.X += dx
-	c.Y += dy
+	c.TargetX += dx
+	c.TargetY += dy
 }
 
-// ZoomIn increases the zoom level
+// ZoomIn increases the zoom level (sets target for smooth movement)
 func (c *Camera) ZoomIn() {
-	c.Zoom *= 1.2
-	if c.Zoom > 4.0 {
-		c.Zoom = 4.0
+	c.TargetZoom *= 1.2
+	if c.TargetZoom > 4.0 {
+		c.TargetZoom = 4.0
 	}
 }
 
-// ZoomOut decreases the zoom level
+// ZoomOut decreases the zoom level (sets target for smooth movement)
 func (c *Camera) ZoomOut() {
-	c.Zoom *= 0.8
-	if c.Zoom < 0.25 {
-		c.Zoom = 0.25
+	c.TargetZoom *= 0.8
+	if c.TargetZoom < 0.25 {
+		c.TargetZoom = 0.25
 	}
 }
 
@@ -74,4 +82,39 @@ func (c *Camera) GetViewportCenter() (float64, float64) {
 func (c *Camera) IsVisible(wx, wy float64, screenWidth, screenHeight int) bool {
 	sx, sy := c.WorldToScreen(wx, wy, screenWidth, screenHeight)
 	return sx >= 0 && sx < screenWidth && sy >= 0 && sy < screenHeight
+}
+
+// Update smoothly interpolates the camera towards its target position and zoom
+// smoothness controls how smooth the movement is (0.0-1.0, where higher = smoother but slower)
+// Returns true if the camera is still moving
+func (c *Camera) Update(smoothness float64) bool {
+	const threshold = 0.001 // Stop interpolating when close enough
+
+	isMoving := false
+
+	// Interpolate X position
+	if math.Abs(c.X-c.TargetX) > threshold {
+		c.X += (c.TargetX - c.X) * smoothness
+		isMoving = true
+	} else {
+		c.X = c.TargetX
+	}
+
+	// Interpolate Y position
+	if math.Abs(c.Y-c.TargetY) > threshold {
+		c.Y += (c.TargetY - c.Y) * smoothness
+		isMoving = true
+	} else {
+		c.Y = c.TargetY
+	}
+
+	// Interpolate Zoom
+	if math.Abs(c.Zoom-c.TargetZoom) > threshold {
+		c.Zoom += (c.TargetZoom - c.Zoom) * smoothness
+		isMoving = true
+	} else {
+		c.Zoom = c.TargetZoom
+	}
+
+	return isMoving
 }

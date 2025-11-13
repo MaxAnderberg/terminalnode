@@ -45,6 +45,11 @@ func (m *Model) LoadFromFile(filename string) error {
 	m.Edges = data.Edges
 	m.Camera = data.Camera
 
+	// Initialize camera targets (not serialized, so set them to current values)
+	m.Camera.TargetX = m.Camera.X
+	m.Camera.TargetY = m.Camera.Y
+	m.Camera.TargetZoom = m.Camera.Zoom
+
 	// Select first node if none selected
 	if m.Selected == "" && len(m.Nodes) > 0 {
 		for id := range m.Nodes {
